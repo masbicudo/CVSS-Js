@@ -88,8 +88,8 @@ var CVSS2 = /** @class */ (function () {
         return M;
     };
     CVSS2.checkFieldSupported = function (field) {
-        if (CVSS2.prop_names.indexOf(field) < 0)
-            throw new Error("CVSS 2 does not support a field named " + field);
+        if (!CVSS2.isprop(field))
+            throw new Error("Invalid CVSS 2 parameter name " + field);
     };
     CVSS2.replaceMetrics = function (M, map) {
         M = M.clone();
@@ -183,7 +183,7 @@ var CVSS2 = /** @class */ (function () {
         return (Math.round(1 / u * n)) * u;
     };
     CVSS2.isprop = function (propName) {
-        return !CVSS2.prop_names.every(function (x) { return x != propName; });
+        return CVSS2.prop_names.indexOf(propName) >= 0;
     };
     CVSS2.isNumeric = function (n) {
         return !isNaN(parseFloat(n)) && isFinite(n);
@@ -379,8 +379,7 @@ var CVSS2 = /** @class */ (function () {
         return result;
     };
     CVSS2.getParamInfo = function (name) {
-        if (!CVSS2.isprop(name))
-            throw new Error("Invalid CVSS 2 parameter name: " + name);
+        CVSS2.checkFieldSupported(name);
         var fullName = CVSS2.map_prop_names[name];
         var fullValueName = CVSS2.map_value_names[name];
         var values = CVSS2.lookup_table[name];

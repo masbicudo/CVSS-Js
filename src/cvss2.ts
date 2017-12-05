@@ -236,8 +236,8 @@ export class CVSS2 {
     }
     
     private static checkFieldSupported(field:string) {
-        if (CVSS2.prop_names.indexOf(field) < 0)
-            throw new Error("CVSS 2 does not support a field named " + field);
+        if (!CVSS2.isprop(field))
+            throw new Error("Invalid CVSS 2 parameter name " + field);
     }
 
     public static replaceMetrics( M : CVSS2, map : IMap<number> ) : CVSS2 {
@@ -328,7 +328,7 @@ export class CVSS2 {
     }
     
     public static isprop(propName : string) {
-        return !CVSS2.prop_names.every(x => x != propName);
+        return CVSS2.prop_names.indexOf(propName) >= 0;
     }
 
 
@@ -546,8 +546,7 @@ export class CVSS2 {
     }
 
     public static getParamInfo( name: string ) : IParamInfo {
-        if (!CVSS2.isprop(name))
-            throw new Error("Invalid CVSS 2 parameter name: " + name);
+        CVSS2.checkFieldSupported(name);
         var fullName = (CVSS2.map_prop_names as any)[name];
         var fullValueName = (CVSS2.map_value_names as any)[name];
         var values = (CVSS2.lookup_table as any)[name];

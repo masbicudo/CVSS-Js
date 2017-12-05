@@ -1,6 +1,12 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var undef;
+var GroupName;
+(function (GroupName) {
+    GroupName["Base"] = "Base";
+    GroupName["Temporal"] = "Temporal";
+    GroupName["Environmental"] = "Environmental";
+})(GroupName = exports.GroupName || (exports.GroupName = {}));
 /** CVSS2 Represents CVSS 2 metrics for a vulnerability.
  *
  *  This code is implemented according to the specification
@@ -364,6 +370,34 @@ var CVSS2 = /** @class */ (function () {
         // this method is intended to make editable clones
         return M;
     };
+    CVSS2.getAllParamInfos = function () {
+        var result = [];
+        var grps = CVSS2.map_prop_groups;
+        for (var k in grps)
+            if (grps.hasOwnProperty(k))
+                result.push(CVSS2.getParamInfo(k));
+        return result;
+    };
+    CVSS2.getParamInfo = function (name) {
+        if (!CVSS2.isprop(name))
+            throw new Error("Invalid CVSS 2 parameter name: " + name);
+        var fullName = CVSS2.map_prop_names[name];
+        var values = CVSS2.lookup_table[name];
+        var vals = [];
+        for (var k in values)
+            if (values.hasOwnProperty(k))
+                vals.push({
+                    fullStringValue: fullName[k],
+                    numericValue: values[k],
+                    stringValue: k,
+                });
+        return {
+            name: name,
+            fullName: fullName,
+            group: CVSS2.map_prop_groups[name],
+            values: vals
+        };
+    };
     CVSS2.lookup_table = {
         'AV': { 'N': 1.000, 'A': 0.646, 'L': 0.395 },
         'AC': { 'L': 0.710, 'M': 0.610, 'H': 0.350 },
@@ -396,21 +430,21 @@ var CVSS2 = /** @class */ (function () {
         'CDP': 'Collateral Damage Potential',
         'TD': 'Target Distribution',
     };
-    CVSS2.map_prop_grups = {
-        'AV': 'Base',
-        'AC': 'Base',
-        'Au': 'Base',
-        'C': 'Base',
-        'I': 'Base',
-        'A': 'Base',
-        'E': 'Temporal',
-        'RL': 'Temporal',
-        'RC': 'Temporal',
-        'CR': 'Environmental',
-        'IR': 'Environmental',
-        'AR': 'Environmental',
-        'CDP': 'Environmental',
-        'TD': 'Environmental',
+    CVSS2.map_prop_groups = {
+        'AV': GroupName.Base,
+        'AC': GroupName.Base,
+        'Au': GroupName.Base,
+        'C': GroupName.Base,
+        'I': GroupName.Base,
+        'A': GroupName.Base,
+        'E': GroupName.Temporal,
+        'RL': GroupName.Temporal,
+        'RC': GroupName.Temporal,
+        'CR': GroupName.Environmental,
+        'IR': GroupName.Environmental,
+        'AR': GroupName.Environmental,
+        'CDP': GroupName.Environmental,
+        'TD': GroupName.Environmental,
     };
     CVSS2.map_value_names = {
         'AV': { 'N': 'Network', 'A': 'Adjacent Network', 'L': 'Local' },

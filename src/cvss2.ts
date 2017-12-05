@@ -19,6 +19,19 @@ export interface IFullFieldInfo {
     fullStringValue: string[];
 }
 
+export interface IParamValueInfo {
+    stringValue: string;
+    numericValue: number;
+    fullStringValue: string;
+}
+
+export interface IParamInfo {
+    name: string;
+    fullName: string;
+    group: GroupName;
+    values: IParamValueInfo[];
+}
+
 export interface IMap<TValue> {
     'AV': { 'N': TValue,  'A': TValue,  'L': TValue },
     'AC': { 'L': TValue,  'M': TValue,  'H': TValue },
@@ -36,6 +49,12 @@ export interface IMap<TValue> {
     'AR': {'ND': TValue,  'H': TValue,  'M': TValue,  'L': TValue},
     'CDP': {'ND': TValue,  'N': TValue,  'L': TValue, 'LM': TValue, 'MH': TValue,  'H': TValue},
     'TD': {'ND': TValue,  'N': TValue,  'L': TValue,  'M': TValue,  'H': TValue}
+}
+
+export enum GroupName {
+    "Base" = "Base",
+    "Temporal" = "Temporal",
+    "Environmental" = "Environmental",
 }
 
 /** CVSS2 Represents CVSS 2 metrics for a vulnerability.
@@ -83,23 +102,23 @@ export class CVSS2 {
         'TD': 'Target Distribution',
         }
 
-    static readonly map_prop_grups = {
-        'AV': 'Base',
-        'AC': 'Base',
-        'Au': 'Base',
-        'C': 'Base',
-        'I': 'Base',
-        'A': 'Base',
+    static readonly map_prop_groups : {[k:string]:GroupName} = {
+        'AV': GroupName.Base,
+        'AC': GroupName.Base,
+        'Au': GroupName.Base,
+        'C': GroupName.Base,
+        'I': GroupName.Base,
+        'A': GroupName.Base,
 
-        'E': 'Temporal',
-        'RL': 'Temporal',
-        'RC': 'Temporal',
+        'E': GroupName.Temporal,
+        'RL': GroupName.Temporal,
+        'RC': GroupName.Temporal,
 
-        'CR': 'Environmental',
-        'IR': 'Environmental',
-        'AR': 'Environmental',
-        'CDP': 'Environmental',
-        'TD': 'Environmental',
+        'CR': GroupName.Environmental,
+        'IR': GroupName.Environmental,
+        'AR': GroupName.Environmental,
+        'CDP': GroupName.Environmental,
+        'TD': GroupName.Environmental,
         }
 
     static readonly map_value_names = {
@@ -515,5 +534,37 @@ export class CVSS2 {
         // note: DO NOT FREEZE THE CLONED OBJECT
         // this method is intended to make editable clones
         return M;
+    }
+
+    public static getAllParamInfos( ) : IParamInfo[] {
+        var result = [];
+        const grps = CVSS2.map_prop_groups;
+        for(var k in grps)
+            if (grps.hasOwnProperty(k))
+                result.push(CVSS2.getParamInfo(k));
+        return result;
+    }
+
+    public static getParamInfo( name: string ) : IParamInfo {
+        if (!CVSS2.isprop(name))
+            throw new Error("Invalid CVSS 2 parameter name: " + name);
+        var fullName = (CVSS2.map_prop_names as any)[name];
+        var values = (CVSS2.lookup_table as any)[name];
+
+        var vals : IParamValueInfo[] = [];
+        for(var k in values)
+            if (values.hasOwnProperty(k))
+                vals.push({
+                    fullStringValue: fullName[k],
+                    numericValue: values[k],
+                    stringValue: k,
+                });
+
+        return {
+            name,
+            fullName,
+            group: CVSS2.map_prop_groups[name],
+            values: vals
+        }
     }
 }

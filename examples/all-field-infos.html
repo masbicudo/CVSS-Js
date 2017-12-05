@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Samples using CVSS Javascript library</title>
+    <style>
+        #cvss_str {
+            width: 100%;
+        }
+        @media (min-width: 1px) and (max-width: 400px) {
+            #parsed {
+                column-count: 1
+            }
+        }
+        @media (min-width: 401px) and (max-width: 800px) {
+            #parsed {
+                column-count: 2
+            }
+        }
+        @media (min-width: 801px) and (max-width: 1200px) {
+            #parsed {
+                column-count: 3
+            }
+        }
+        @media (min-width: 1201px) and (max-width: 1600px) {
+            #parsed {
+                column-count: 4
+            }
+        }
+        @media (min-width: 1601px) and (max-width: 10000px) {
+            #parsed {
+                column-count: 5
+            }
+        }
+    </style>
+</head>
+<body>
+    <pre id="allFields"></pre>
+</body>
+<footer>
+    <script>
+        exports = {}
+    </script>
+    <script type="text/Javascript" src="../build/cvss2.js"></script>
+    <script>
+        showParsedText();
+        function showParsedText() {
+            try {
+                var allInfos = CVSS2.getAllParamInfos();
+                allFields.innerText = JSON.stringify(allInfos, null, 2);
+            }
+            catch (ex) {
+                allFields.innerText = "" + ex;
+            }
+        }
+    </script>
+</footer>
+</html>

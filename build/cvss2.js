@@ -1,6 +1,28 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var undef;
+var F_AV = 1 << 0;
+var F_AC = 1 << 1;
+var F_AU = 1 << 2;
+var F_C = 1 << 3;
+var F_CR = 1 << 9;
+var F_I = 1 << 4;
+var F_IR = 1 << 10;
+var F_A = 1 << 5;
+var F_AR = 1 << 11;
+var F_E = 1 << 6;
+var F_RL = 1 << 7;
+var F_RC = 1 << 8;
+var F_CDP = 1 << 12;
+var F_TD = 1 << 13;
+var F_IMPACT = F_C | F_I | F_A;
+var F_EXPLOITABILITY = F_AV | F_AC | F_AU;
+var F_INTERNAL_BASE = F_EXPLOITABILITY;
+var F_BASE = F_IMPACT | F_INTERNAL_BASE;
+var F_ADJUSTED_IMPACT = F_C | F_CR | F_I | F_IR | F_A | F_AR;
+var F_ADJUSTED_TEMPORAL = F_E | F_RL | F_RC | F_ADJUSTED_IMPACT | F_INTERNAL_BASE;
+var F_ENVIRONMENTAL = F_CDP | F_TD | F_ADJUSTED_TEMPORAL;
+var F_TEMPORAL = F_E | F_RL | F_RC | F_BASE;
 var GroupName;
 (function (GroupName) {
     GroupName["Base"] = "Base";
@@ -206,74 +228,89 @@ var CVSS2 = /** @class */ (function () {
     CVSS2.prototype.withWorstEnvironmental = function () {
         return this.fillParse(CVSS2.worst_environmental);
     };
-    CVSS2.prototype.baseScore = function () {
+    CVSS2.prototype.baseScore = function (fast) {
         // BaseScore = round_to_1_decimal(((0.6*Impact)+(0.4*Exploitability)-1.5)*f(Impact))
         // f(impact) = 0 if Impact=0, 1.176 otherwise
-        var Impact = this.impactSubscore();
-        var retval = this.internalBaseScore(Impact);
+        var M = this;
+        if (!fast && !(M.hasMetrics() & F_BASE))
+            M = M.withMetrics();
+        var Impact = M.impactSubscore(true);
+        var retval = M.internalBaseScore(Impact, true);
         return retval;
     };
-    CVSS2.prototype.internalBaseScore = function (Impact) {
+    CVSS2.prototype.internalBaseScore = function (Impact, fast) {
         // BaseScore = round_to_1_decimal(((0.6*Impact)+(0.4*Exploitability)-1.5)*f(Impact))
         // f(impact) = 0 if Impact=0, 1.176 otherwise
         if (Impact == 0)
             return 0;
         else {
-            var Exploitability = this.exploitabilitySubscore();
+            var Exploitability = this.exploitabilitySubscore(fast);
             return CVSS2.round(this.RoundUnit, (0.6 * Impact + 0.4 * Exploitability - 1.5) * 1.176);
         }
     };
-    CVSS2.prototype.impactSubscore = function () {
+    CVSS2.prototype.impactSubscore = function (fast) {
         // Impact = 10.41*(1-(1-ConfImpact)*(1-IntegImpact)*(1-AvailImpact))
         var M = this;
+        if (!fast && !(M.hasMetrics() & F_IMPACT))
+            M = M.withMetrics();
         var c = M.C;
         var i = M.I;
         var a = M.A;
         var retval = 10.41 * (1 - ((1 - c) * (1 - i) * (1 - a)));
         return retval;
     };
-    CVSS2.prototype.exploitabilitySubscore = function () {
+    CVSS2.prototype.exploitabilitySubscore = function (fast) {
         // Exploitability = 20* AccessVector*AccessComplexity*Authentication
         var M = this;
+        if (!fast && !(M.hasMetrics() & F_EXPLOITABILITY))
+            M = M.withMetrics();
         var av = M.AV;
         var ac = M.AC;
         var au = M.Au;
         var retval = 20 * av * ac * au;
         return retval;
     };
-    CVSS2.prototype.temporalScore = function () {
+    CVSS2.prototype.temporalScore = function (fast) {
         // TemporalScore = round_to_1_decimal(BaseScore*Exploitability*RemediationLevel*ReportConfidence)
         var M = this;
+        if (!fast && !(M.hasMetrics() & F_TEMPORAL))
+            M = M.withMetrics();
         var e = M.E;
         var rl = M.RL;
         var rc = M.RC;
-        var retval = CVSS2.round(M.RoundUnit, this.baseScore() * e * rl * rc);
+        var retval = CVSS2.round(M.RoundUnit, M.baseScore(true) * e * rl * rc);
         return retval;
     };
-    CVSS2.prototype.environmentalScore = function () {
+    CVSS2.prototype.environmentalScore = function (fast) {
         // EnvironmentalScore = round_to_1_decimal((AdjustedTemporal+
         // (10-AdjustedTemporal)*CollateralDamagePotential)*TargetDistribution)
         var M = this;
+        if (!fast && !(M.hasMetrics() & F_ENVIRONMENTAL))
+            M = M.withMetrics();
         var cdp = M.CDP;
         var td = M.TD;
-        var AdjustedTemporal = this.adjustedTemporalSubscore();
+        var AdjustedTemporal = M.adjustedTemporalSubscore(true);
         var retval = CVSS2.round(M.RoundUnit, (AdjustedTemporal + (10 - AdjustedTemporal) * cdp) * td);
         return retval;
     };
-    CVSS2.prototype.adjustedTemporalSubscore = function () {
+    CVSS2.prototype.adjustedTemporalSubscore = function (fast) {
         // AdjustedTemporal = TemporalScore recomputed with the BaseScores Impact sub-equation replaced with the AdjustedImpact equation
         var M = this;
+        if (!fast && !(M.hasMetrics() & F_ADJUSTED_TEMPORAL))
+            M = M.withMetrics();
         var e = M.E;
         var rl = M.RL;
         var rc = M.RC;
-        var Impact = this.adjustedImpactSubscore();
-        var retval = CVSS2.round(M.RoundUnit, this.internalBaseScore(Impact) * e * rl * rc);
+        var Impact = M.adjustedImpactSubscore(true);
+        var retval = CVSS2.round(M.RoundUnit, M.internalBaseScore(Impact) * e * rl * rc);
         return retval;
     };
-    CVSS2.prototype.adjustedImpactSubscore = function () {
+    CVSS2.prototype.adjustedImpactSubscore = function (fast) {
         // AdjustedImpact = min(10,10.41*(1-(1-ConfImpact*ConfReq)*(1-IntegImpact*IntegReq)
         //                  *(1-AvailImpact*AvailReq)))
         var M = this;
+        if (!fast && !(M.hasMetrics() & F_ADJUSTED_IMPACT))
+            M = M.withMetrics();
         var c = M.C;
         var cr = M.CR;
         var i = M.I;
@@ -297,6 +334,20 @@ var CVSS2 = /** @class */ (function () {
         // Converts this CVSS parameters to their equivalent string representations when possible.
         return CVSS2.revertMetrics(this, CVSS2.lookup_table);
     };
+    /**
+     * Returns the number of numeric metrics found within this CVSS2 object.
+     */
+    CVSS2.prototype.hasMetrics = function () {
+        var f = 1, r = 0;
+        var lt = CVSS2.lookup_table;
+        for (var k in lt)
+            if (lt.hasOwnProperty(k)) {
+                if (typeof lt[k] == "number")
+                    r |= f;
+                f *= 2;
+            }
+        return r;
+    };
     CVSS2.prototype.toString = function (varargin) {
         // Converts this CVSS object to it's equivalent string representation.
         return CVSS2.convertToCvssString(this, varargin);
@@ -305,16 +356,16 @@ var CVSS2 = /** @class */ (function () {
         var O = new CVSS2();
         this.forEach(function (d, o) { O[d.name] = d; });
         var clone = this.withMetrics();
-        var Impact = clone.adjustedImpactSubscore();
+        var Impact = clone.adjustedImpactSubscore(true);
         O.scores = {
-            baseScore: clone.baseScore(),
-            environmentalScore: clone.environmentalScore(),
-            temporalScore: clone.temporalScore(),
-            exploitabilitySubscore: clone.exploitabilitySubscore(),
-            internalBaseScore: clone.internalBaseScore(Impact),
+            baseScore: clone.baseScore(true),
+            environmentalScore: clone.environmentalScore(true),
+            temporalScore: clone.temporalScore(true),
+            exploitabilitySubscore: clone.exploitabilitySubscore(true),
+            internalBaseScore: clone.internalBaseScore(Impact, true),
             adjustedImpactSubscore: Impact,
-            adjustedTemporalSubscore: clone.adjustedTemporalSubscore(),
-            impactSubscore: clone.impactSubscore(),
+            adjustedTemporalSubscore: clone.adjustedTemporalSubscore(true),
+            impactSubscore: clone.impactSubscore(true),
         };
         Object.freeze(O);
         return O;

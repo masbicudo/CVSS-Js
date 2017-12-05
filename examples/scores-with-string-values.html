@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Samples using CVSS Javascript library</title>
+    <style>
+        #cvss_str {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div><input id="cvss_str" type="text" value="AV:N/AC:M/Au:N/C:C/I:C/A:C" /></div>
+    <pre id="parsed"></pre>
+    <pre id="parsed2"></pre>
+</body>
+<footer>
+    <script>
+        exports = {}
+    </script>
+    <script type="text/Javascript" src="../build/cvss2.js"></script>
+    <script>
+        showParsedText();
+        cvss_str.addEventListener("keyup", e => {
+            showParsedText();
+        })
+        function showParsedText() {
+            try {
+                var cvss = CVSS2.parseCVSSString(cvss_str.value);
+                var Impact = cvss.adjustedImpactSubscore();
+                parsed.innerText = JSON.stringify( {
+                    baseScore: cvss.baseScore(),
+                    environmentalScore: cvss.environmentalScore(),
+                    temporalScore: cvss.temporalScore(),
+                    exploitabilitySubscore: cvss.exploitabilitySubscore(),
+                    internalBaseScore: cvss.internalBaseScore(Impact),
+                    adjustedImpactSubscore: Impact,
+                    adjustedTemporalSubscore: cvss.adjustedTemporalSubscore(),
+                    impactSubscore: cvss.impactSubscore(),
+                }, null, 2);
+                cvss = cvss.withMetrics();
+                var Impact = cvss.adjustedImpactSubscore(true);
+                parsed2.innerText = JSON.stringify( {
+                    baseScore: cvss.baseScore(true),
+                    environmentalScore: cvss.environmentalScore(true),
+                    temporalScore: cvss.temporalScore(true),
+                    exploitabilitySubscore: cvss.exploitabilitySubscore(true),
+                    internalBaseScore: cvss.internalBaseScore(Impact, true),
+                    adjustedImpactSubscore: Impact,
+                    adjustedTemporalSubscore: cvss.adjustedTemporalSubscore(true),
+                    impactSubscore: cvss.impactSubscore(true),
+                }, null, 2);
+                
+            }
+            catch (ex) {
+                parsed.innerText = "" + ex;
+            }
+        }
+    </script>
+</footer>
+</html>

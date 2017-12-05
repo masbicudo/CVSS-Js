@@ -51,6 +51,29 @@ export interface IMap<TValue> {
     'TD': {'ND': TValue,  'N': TValue,  'L': TValue,  'M': TValue,  'H': TValue}
 }
 
+const F_AV = 1 << 0;
+const F_AC = 1 << 1;
+const F_AU = 1 << 2;
+const F_C  = 1 << 3;
+const F_CR = 1 << 9;
+const F_I  = 1 << 4;
+const F_IR = 1 << 10;
+const F_A  = 1 << 5;
+const F_AR = 1 << 11;
+const F_E = 1 << 6;
+const F_RL = 1 << 7;
+const F_RC = 1 << 8;
+const F_CDP = 1 << 12;
+const F_TD = 1 << 13;
+const F_IMPACT = F_C|F_I|F_A;
+const F_EXPLOITABILITY = F_AV|F_AC|F_AU;
+const F_INTERNAL_BASE = F_EXPLOITABILITY;
+const F_BASE = F_IMPACT|F_INTERNAL_BASE;
+const F_ADJUSTED_IMPACT = F_C|F_CR|F_I|F_IR|F_A|F_AR;
+const F_ADJUSTED_TEMPORAL = F_E|F_RL|F_RC|F_ADJUSTED_IMPACT|F_INTERNAL_BASE;
+const F_ENVIRONMENTAL = F_CDP|F_TD|F_ADJUSTED_TEMPORAL;
+const F_TEMPORAL = F_E|F_RL|F_RC|F_BASE;
+
 export enum GroupName {
     "Base" = "Base",
     "Temporal" = "Temporal",
@@ -355,28 +378,31 @@ export class CVSS2 {
         return this.fillParse( CVSS2.worst_environmental );
     }
 
-    public baseScore() : number {
+    public baseScore(fast? : boolean) : number {
         // BaseScore = round_to_1_decimal(((0.6*Impact)+(0.4*Exploitability)-1.5)*f(Impact))
         // f(impact) = 0 if Impact=0, 1.176 otherwise
-        var Impact = this.impactSubscore();
-        var retval = this.internalBaseScore(Impact);
+        var M = this as CVSS2;
+        if (!fast && !(M.hasMetrics() & F_BASE)) M = M.withMetrics();
+        var Impact = M.impactSubscore(true);
+        var retval = M.internalBaseScore(Impact, true);
         return retval;
     }
 
-    public internalBaseScore(Impact : number) {
+    public internalBaseScore(Impact : number, fast? : boolean) : number {
         // BaseScore = round_to_1_decimal(((0.6*Impact)+(0.4*Exploitability)-1.5)*f(Impact))
         // f(impact) = 0 if Impact=0, 1.176 otherwise
         if (Impact == 0)
             return 0;
         else {
-            var Exploitability = this.exploitabilitySubscore();
+            var Exploitability = this.exploitabilitySubscore(fast);
             return CVSS2.round(this.RoundUnit, (0.6*Impact + 0.4*Exploitability - 1.5)*1.176);
         }
     }
 
-    public impactSubscore() {
+    public impactSubscore(fast? : boolean) : number {
         // Impact = 10.41*(1-(1-ConfImpact)*(1-IntegImpact)*(1-AvailImpact))
-        var M = this;
+        var M = this as CVSS2;
+        if (!fast && !(M.hasMetrics() & F_IMPACT)) M = M.withMetrics();
         var c = M.C as number;
         var i = M.I as number;
         var a = M.A as number;
@@ -384,9 +410,10 @@ export class CVSS2 {
         return retval;
     }
     
-    public exploitabilitySubscore() {
+    public exploitabilitySubscore(fast? : boolean) : number {
         // Exploitability = 20* AccessVector*AccessComplexity*Authentication
-        var M = this;
+        var M = this as CVSS2;
+        if (!fast && !(M.hasMetrics() & F_EXPLOITABILITY)) M = M.withMetrics();
         var av = M.AV as number;
         var ac = M.AC as number;
         var au = M.Au as number;
@@ -394,42 +421,46 @@ export class CVSS2 {
         return retval;
     }
     
-    public temporalScore() {
+    public temporalScore(fast? : boolean) : number {
         // TemporalScore = round_to_1_decimal(BaseScore*Exploitability*RemediationLevel*ReportConfidence)
-        var M = this;
+        var M = this as CVSS2;
+        if (!fast && !(M.hasMetrics() & F_TEMPORAL)) M = M.withMetrics();
         var e = M.E as number;
         var rl = M.RL as number;
         var rc = M.RC as number;
-        var retval = CVSS2.round(M.RoundUnit, this.baseScore() * e * rl * rc);
+        var retval = CVSS2.round(M.RoundUnit, M.baseScore(true) * e * rl * rc);
         return retval;
     }
     
-    public environmentalScore() {
+    public environmentalScore(fast? : boolean) : number {
         // EnvironmentalScore = round_to_1_decimal((AdjustedTemporal+
         // (10-AdjustedTemporal)*CollateralDamagePotential)*TargetDistribution)
-        var M = this;
+        var M = this as CVSS2;
+        if (!fast && !(M.hasMetrics() & F_ENVIRONMENTAL)) M = M.withMetrics();
         var cdp = M.CDP as number;
         var td = M.TD as number;
-        var AdjustedTemporal = this.adjustedTemporalSubscore();
+        var AdjustedTemporal = M.adjustedTemporalSubscore(true);
         var retval = CVSS2.round(M.RoundUnit, (AdjustedTemporal + (10 - AdjustedTemporal)*cdp)*td);
         return retval;
     }
     
-    public adjustedTemporalSubscore() {
+    public adjustedTemporalSubscore(fast? : boolean) : number {
         // AdjustedTemporal = TemporalScore recomputed with the BaseScores Impact sub-equation replaced with the AdjustedImpact equation
-        var M = this;
+        var M = this as CVSS2;
+        if (!fast && !(M.hasMetrics() & F_ADJUSTED_TEMPORAL)) M = M.withMetrics();
         var e = M.E as number;
         var rl = M.RL as number;
         var rc = M.RC as number;
-        var Impact = this.adjustedImpactSubscore();
-        var retval = CVSS2.round(M.RoundUnit, this.internalBaseScore(Impact) * e * rl * rc);
+        var Impact = M.adjustedImpactSubscore(true);
+        var retval = CVSS2.round(M.RoundUnit, M.internalBaseScore(Impact) * e * rl * rc);
         return retval;
     }
     
-    public adjustedImpactSubscore() {
+    public adjustedImpactSubscore(fast? : boolean) : number {
         // AdjustedImpact = min(10,10.41*(1-(1-ConfImpact*ConfReq)*(1-IntegImpact*IntegReq)
         //                  *(1-AvailImpact*AvailReq)))
-        var M = this;
+        var M = this as CVSS2;
+        if (!fast && !(M.hasMetrics() & F_ADJUSTED_IMPACT)) M = M.withMetrics();
         var c = M.C as number;
         var cr = M.CR as number;
         var i = M.I as number;
@@ -439,7 +470,7 @@ export class CVSS2 {
         return Math.min(10, 10.41*(1 - (1 - c*cr)*(1 - i*ir)*(1 - a*ar)));
     }
     
-    public fillParse( input_string : string ) {
+    public fillParse( input_string : string ) : CVSS2 {
         // Reparse returns a new CVSS2 object with additional metrics from
         // the given string.
         var O = CVSS2.fillCVSSWithParsedString( this, input_string );
@@ -447,14 +478,28 @@ export class CVSS2 {
         return O;
     }
 
-    public withMetrics() {
+    public withMetrics() : CVSS2 {
         var O = CVSS2.replaceMetrics( this, CVSS2.lookup_table );
         return O;
     }
     
-    public withStrings() {
+    public withStrings() : CVSS2 {
         // Converts this CVSS parameters to their equivalent string representations when possible.
         return CVSS2.revertMetrics( this, CVSS2.lookup_table );
+    }
+
+    /**
+     * Returns the number of numeric metrics found within this CVSS2 object.
+     */
+    public hasMetrics() : number {
+        var f = 1, r = 0;
+        var lt = CVSS2.lookup_table;
+        for(var k in lt)
+            if (lt.hasOwnProperty(k)) {
+                if (typeof (lt as any)[k] == "number") r |= f;
+                f *= 2;
+            }
+        return r;
     }
     
     public toString( varargin : ISerializeOptions ) : string {
@@ -466,16 +511,16 @@ export class CVSS2 {
         var O = new CVSS2();
         this.forEach((d,o)=>{ (O as any)[d.name] = d; });
         var clone = this.withMetrics();
-        var Impact = clone.adjustedImpactSubscore();
+        var Impact = clone.adjustedImpactSubscore(true);
         (O as any).scores = {
-            baseScore: clone.baseScore(),
-            environmentalScore: clone.environmentalScore(),
-            temporalScore: clone.temporalScore(),
-            exploitabilitySubscore: clone.exploitabilitySubscore(),
-            internalBaseScore: clone.internalBaseScore(Impact),
+            baseScore: clone.baseScore(true),
+            environmentalScore: clone.environmentalScore(true),
+            temporalScore: clone.temporalScore(true),
+            exploitabilitySubscore: clone.exploitabilitySubscore(true),
+            internalBaseScore: clone.internalBaseScore(Impact, true),
             adjustedImpactSubscore: Impact,
-            adjustedTemporalSubscore: clone.adjustedTemporalSubscore(),
-            impactSubscore: clone.impactSubscore(),
+            adjustedTemporalSubscore: clone.adjustedTemporalSubscore(true),
+            impactSubscore: clone.impactSubscore(true),
         }
         Object.freeze(O);
         return O;

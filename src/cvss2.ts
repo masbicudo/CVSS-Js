@@ -549,13 +549,14 @@ export class CVSS2 {
         if (!CVSS2.isprop(name))
             throw new Error("Invalid CVSS 2 parameter name: " + name);
         var fullName = (CVSS2.map_prop_names as any)[name];
+        var fullValueName = (CVSS2.map_value_names as any)[name];
         var values = (CVSS2.lookup_table as any)[name];
 
         var vals : IParamValueInfo[] = [];
         for(var k in values)
             if (values.hasOwnProperty(k))
                 vals.push({
-                    fullStringValue: fullName[k],
+                    fullStringValue: fullValueName[k],
                     numericValue: values[k],
                     stringValue: k,
                 });

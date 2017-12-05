@@ -286,7 +286,11 @@ var CVSS2 = /** @class */ (function () {
         // Reparse returns a new CVSS2 object with additional metrics from
         // the given string.
         var O = CVSS2.fillCVSSWithParsedString(this, input_string);
-        O = CVSS2.replaceMetrics(O, CVSS2.lookup_table);
+        O = O.withMetrics();
+        return O;
+    };
+    CVSS2.prototype.withMetrics = function () {
+        var O = CVSS2.replaceMetrics(this, CVSS2.lookup_table);
         return O;
     };
     CVSS2.prototype.withStrings = function () {
@@ -300,7 +304,7 @@ var CVSS2 = /** @class */ (function () {
     CVSS2.prototype.getFullInfo = function () {
         var O = new CVSS2();
         this.forEach(function (d, o) { O[d.name] = d; });
-        var clone = CVSS2.replaceMetrics(this, CVSS2.lookup_table);
+        var clone = this.withMetrics();
         var Impact = clone.adjustedImpactSubscore();
         O.scores = {
             baseScore: clone.baseScore(),
@@ -397,6 +401,9 @@ var CVSS2 = /** @class */ (function () {
             group: CVSS2.map_prop_groups[name],
             values: vals
         };
+    };
+    CVSS2.assign = function (M, D) {
+        return Object.freeze(Object.assign(M.clone(), D));
     };
     CVSS2.lookup_table = {
         'AV': { 'N': 1.000, 'A': 0.646, 'L': 0.395 },

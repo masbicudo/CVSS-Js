@@ -443,7 +443,12 @@ export class CVSS2 {
         // Reparse returns a new CVSS2 object with additional metrics from
         // the given string.
         var O = CVSS2.fillCVSSWithParsedString( this, input_string );
-        O = CVSS2.replaceMetrics( O, CVSS2.lookup_table );
+        O = O.withMetrics();
+        return O;
+    }
+
+    public withMetrics() {
+        var O = CVSS2.replaceMetrics( this, CVSS2.lookup_table );
         return O;
     }
     
@@ -460,7 +465,7 @@ export class CVSS2 {
     public getFullInfo() : CVSS2 {
         var O = new CVSS2();
         this.forEach((d,o)=>{ (O as any)[d.name] = d; });
-        var clone = CVSS2.replaceMetrics(this, CVSS2.lookup_table);
+        var clone = this.withMetrics();
         var Impact = clone.adjustedImpactSubscore();
         (O as any).scores = {
             baseScore: clone.baseScore(),
@@ -566,5 +571,9 @@ export class CVSS2 {
             group: CVSS2.map_prop_groups[name],
             values: vals
         }
+    }
+
+    public static assign( M : CVSS2, D : CVSS2 ) : CVSS2 {
+        return Object.freeze((<any>Object).assign(M.clone(), D));
     }
 }
